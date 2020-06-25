@@ -1,9 +1,20 @@
 # Person Re-Identification
 
+![](./person-reid.jpg)
+
 This repository contains training and inference code for person re-identification
 neural networks. The networks are based on the [OSNet](https://arxiv.org/abs/1905.00953)
-architecture provided by the [torchreid](https://github.com/KaiyangZhou/deep-person-reid.git)
+architecture provided by the [deep-object-reid](https://github.com/opencv/deep-object-reid.git)
 project. The code supports conversion to the ONNX\* format and inference of OpenVINO™ models.
+
+
+| Model Name | Market-1501 rank@1 accuracy | Market-1501 mAP | GFlops | MParams | Links |
+| --- | --- | --- | --- | --- | --- |
+| person-reidentification-retail-0248 | 84.3 | 55.6 | 0.174 | 0.183 | [shapshot](https://download.01.org/opencv/openvino_training_extensions/models/person_reidentification/person-reidentification-retail-0248.pt), [configuration file](configs/person-reidentification-retail-0248.yaml) |
+| person-reidentification-retail-0265 | 95.9 | 87.7 | 1.993 | 2.103 | [shapshot](https://download.01.org/opencv/openvino_training_extensions/models/person_reidentification/person-reidentification-retail-0265.pt), [configuration file](configs/person-reidentification-retail-0265.yaml) |
+| person-reidentification-retail-0267 | 92.7 | 76.6 | 0.564 | 0.595 | [shapshot](https://download.01.org/opencv/openvino_training_extensions/models/person_reidentification/person-reidentification-retail-0267.pt), [configuration file](configs/person-reidentification-retail-0267.yaml) |
+| person-reidentification-retail-0270 | 94.7 | 83.8 | 1.170 | 1.234 | [shapshot](https://download.01.org/opencv/openvino_training_extensions/models/person_reidentification/person-reidentification-retail-0270.pt), [configuration file](configs/person-reidentification-retail-0270.yaml) |
+
 
 ## Setup
 
@@ -11,22 +22,16 @@ project. The code supports conversion to the ONNX\* format and inference of Open
 
 * Ubuntu\* 16.04
 * Python\* 3.5.2
-* PyTorch\* 1.3 or higher
-* OpenVINO™ 2019 R4 (or lower) with Python API
+* PyTorch\* 1.4 or higher
+* OpenVINO™ 2020 R3 (or newer) with Python API
 
 ### Installation
 
-1. Create and activate virtual Python environment
-
-```bash
-cd $(git rev-parse --show-toplevel)/pytorch_toolkit/person_reidentification
-bash init_venv.sh
-. venv/bin/activate
-```
+To create and activate virtual Python environment follow [installation instructions](../README.md)
 
 ### Datasets
 
-Networks were trained on the following datasets:
+This toolkit contains configs for training on the following datasets:
 
 * Market-1501
 * MSMT17v2
@@ -55,21 +60,21 @@ root
 ### Configuration Files
 
 The script for training and inference uses a configuration file
-[default_config.py](config/default_config.py), which consists of default parameters.
+[default_config.py](https://github.com/opencv/deep-object-reid/tree/ote/scripts/default_config.py), which consists of default parameters.
 This file also has description of parameters.
 Parameters that you wish to change must be in your own configuration file.
-Example: [person-reidentification-retail-0300.yaml](config/person-reidentification-retail-0300.yaml)
+Example: [person-reidentification-retail-0265.yaml](configs/person-reidentification-retail-0265.yaml)
 
 ## Training
 
-To start training, create or choose a configuration file and use the `main.py` script.
+To start training, create or choose a configuration file and use the [main.py](https://github.com/opencv/deep-object-reid/tree/ote/scripts/main.py) script.
 
 Example:
 
 ```bash
-python main.py \
+python ../../../external/deep-object-reid/scripts/main.py \
     --root /path/to/datasets/directory/root \
-    --config config/person-reidentification-retail-0300.yaml
+    --config configs/person-reidentification-retail-0265.yaml
 ```
 
 ## Test
@@ -78,13 +83,6 @@ and run a command like the one used for training.
 For visualization results, set the `test.visrank` parameter to `True` (it works only when
 `test.evaluate` is `True`).
 For visualization activation maps, set the `test.visactmap` parameter to `True`.
-
-### Pretrained Models
-
-You can download pretrained models in the PyTorch format corresponding to the provided configs from a fileshare as well:
-- [person-reidentification-retail-0248](https://download.01.org/opencv/openvino_training_extensions/models/person_reidentification/person-reidentification-retail-0248.pt)
-- [person-reidentification-retail-0249](https://download.01.org/opencv/openvino_training_extensions/models/person_reidentification/person-reidentification-retail-0249.pt)
-- [person-reidentification-retail-0300](https://download.01.org/opencv/openvino_training_extensions/models/person_reidentification/person-reidentification-retail-0300.pt)
 
 
 ### Test OpenVINO™ Re-Identification Models
@@ -109,7 +107,7 @@ Follow the steps below:
 1. Convert a PyTorch model to the ONNX format by running the following:
 
     ```bash
-    python convert_to_onnx.py \
+    python ../../../external/deep-object-reid/tools/convert_to_onnx.py \
         --config /path/to/config/file.yaml \
         --output-name /path/to/output/model \
         --verbose
@@ -133,7 +131,7 @@ This produces the `model.xml` model and weights `model.bin` in single-precision 
 
 ## OpenVINO™ Demo
 
-OpenVINO™ provides the multi-camera-multi-person tracking demo, which is able to use these models as person re-identification networks. See details in the [demo](https://github.com/opencv/open_model_zoo/tree/develop/demos/python_demos/multi_camera_multi_person_tracking).
+OpenVINO™ provides the multi-camera-multi-person tracking demo, which is able to use these models as person re-identification networks. See details in the [demo](https://github.com/opencv/open_model_zoo/tree/develop/demos/python_demos/multi_camera_multi_target_tracking).
 
 ## Citation
 If this training code helped your research, please cite the paper:
