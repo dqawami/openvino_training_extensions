@@ -17,7 +17,7 @@ from common.utils import replace_text_in_file
 
 
 def face_detection_test_case(model_name, alt_ssd_export):
-    class ExportTestCase(export_test_case(model_name, alt_ssd_export=alt_ssd_export)):
+    class ExportTestCase(export_test_case('face-detection', model_name, alt_ssd_export=alt_ssd_export)):
         def setUp(self):
             super().setUp()
 
@@ -47,3 +47,11 @@ class FaceDetection0105TestCase(face_detection_test_case('face-detection-0105', 
 
 class FaceDetection0106TestCase(face_detection_test_case('face-detection-0106', False)):
     """ Test case for face-detection-0106 model export. """
+
+
+class FaceDetection0107TestCase(face_detection_test_case('face-detection-0107', True)):
+    """ Test case for face-detection-0107 model export. """
+
+
+class FaceDetection0108TestCase(face_detection_test_case('face-detection-0108', True)):
+    """ Test case for face-detection-0108 model export. """
