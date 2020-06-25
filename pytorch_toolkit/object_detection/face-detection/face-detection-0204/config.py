@@ -1,41 +1,35 @@
 # model settings
-input_size = 416
+input_size = 448
 width_mult = 1.0
 model = dict(
-    type='FCOS',
+    type='SingleStageDetector',
     backbone=dict(
         type='mobilenetv2_w1',
-        out_indices=(3, 4, 5),
+        out_indices=(4, 5),
         frozen_stages=-1,
         norm_eval=False,
-        pretrained=True,
+        pretrained=True
     ),
-    neck=dict(
-        type='FPN',
-        in_channels=[int(width_mult * 32), int(width_mult * 96), int(width_mult * 320)],
-        out_channels=48,
-        start_level=0,
-        add_extra_convs=True,
-        extra_convs_on_inputs=False,  # use P5
-        num_outs=5,
-        relu_before_extra_convs=True),
+    neck=None,
     bbox_head=dict(
-        type='FCOSHead',
-        num_classes=2,
-        in_channels=48,
-        stacked_convs=4,
-        feat_channels=32,
-        strides=(8, 16, 32, 64, 128),
-        loss_cls=dict(
-            type='FocalLoss',
-            use_sigmoid=True,
-            gamma=2.0,
-            alpha=0.25,
-            loss_weight=1.0),
-        loss_bbox=dict(type='IoULoss', loss_weight=1.0),
-        loss_centerness=dict(
-            type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0)))
-# training and testing settings
+        type='SSDHead',
+        num_classes=1,
+        in_channels=(int(width_mult * 96), int(width_mult * 320)),
+        anchor_generator=dict(
+            type='SSDAnchorGeneratorClustered',
+            strides=(16, 32),
+            widths=([14.0373, 37.4827, 21.952, 51.8187],
+                    [213.5467, 115.584, 192.3413, 76.3093, 112.896]),
+            heights=([22.4, 59.136, 38.08, 94.3787],
+                     [339.7333, 243.264, 185.92, 156.9493, 108.416]),
+            ),
+        bbox_coder=dict(
+            type='DeltaXYWHBBoxCoder',
+            target_means=(.0, .0, .0, .0),
+            target_stds=(0.1, 0.1, 0.2, 0.2),),
+        depthwise_heads=True,
+        depthwise_heads_activations='relu',
+        loss_balancing=True))
 cudnn_benchmark = True
 train_cfg = dict(
     assigner=dict(
@@ -59,7 +53,7 @@ test_cfg = dict(
     max_per_img=200)
 # model training and testing settings
 # dataset settings
-dataset_type = 'CustomCocoDataset'
+dataset_type = 'CocoDataset'
 data_root = 'data/WIDERFace/'
 img_norm_cfg = dict(mean=[0, 0, 0], std=[255, 255, 255], to_rgb=True)
 train_pipeline = [
@@ -95,7 +89,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    imgs_per_gpu=32,
+    samples_per_gpu=32,
     workers_per_gpu=4,
     train=dict(
         type='RepeatDataset',
@@ -104,7 +98,7 @@ data = dict(
             type=dataset_type,
             classes=('face',),
             ann_file=data_root + '/train.json',
-            min_size=10,
+            min_size=17,
             img_prefix=data_root,
             pipeline=train_pipeline
         )
@@ -136,7 +130,7 @@ lr_config = dict(
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
-    interval=100,
+    interval=10,
     hooks=[
         dict(type='TextLoggerHook'),
         dict(type='TensorboardLoggerHook')
@@ -146,7 +140,7 @@ log_config = dict(
 total_epochs = 70
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = 'outputs/face-detection-0105'
+work_dir = 'outputs/face-detection-0104'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]

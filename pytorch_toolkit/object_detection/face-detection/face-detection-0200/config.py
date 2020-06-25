@@ -1,5 +1,5 @@
 # model settings
-input_size = 448
+input_size = 256
 width_mult = 1.0
 model = dict(
     type='SingleStageDetector',
@@ -8,23 +8,27 @@ model = dict(
         out_indices=(4, 5),
         frozen_stages=-1,
         norm_eval=False,
-        pretrained=True,
+        pretrained=True
     ),
     neck=None,
     bbox_head=dict(
         type='SSDHead',
-        input_size=input_size,
+        num_classes=1,
         in_channels=(int(width_mult * 96), int(width_mult * 320)),
-        num_classes=2,
-        anchor_strides=(16, 32),
-        anchor_widths=(
-            [14.0373, 37.4827, 21.952, 51.8187],
-            [213.5467, 115.584, 192.3413, 76.3093, 112.896]),
-        anchor_heights=(
-            [22.4, 59.136, 38.08, 94.3787],
-            [339.7333, 243.264, 185.92, 156.9493, 108.416]),
-        target_means=(.0, .0, .0, .0),
-        target_stds=(0.1, 0.1, 0.2, 0.2),
+        anchor_generator=dict(
+            type='SSDAnchorGeneratorClustered',
+            strides=(16, 32),
+            widths=(
+                [8.0213, 21.4187, 12.544, 29.6107],
+                [122.0267, 66.048, 109.9093, 43.6053, 64.512]),
+            heights=(
+                [12.8, 33.792, 21.76, 53.9307],
+                [194.1333, 139.008, 106.24, 89.6853, 61.952]),
+            ),
+        bbox_coder=dict(
+            type='DeltaXYWHBBoxCoder',
+            target_means=(.0, .0, .0, .0),
+            target_stds=(0.1, 0.1, 0.2, 0.2),),
         depthwise_heads=True,
         depthwise_heads_activations='relu',
         loss_balancing=True))
@@ -51,7 +55,7 @@ test_cfg = dict(
     max_per_img=200)
 # model training and testing settings
 # dataset settings
-dataset_type = 'CustomCocoDataset'
+dataset_type = 'CocoDataset'
 data_root = 'data/WIDERFace/'
 img_norm_cfg = dict(mean=[0, 0, 0], std=[255, 255, 255], to_rgb=True)
 train_pipeline = [
@@ -87,8 +91,8 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    imgs_per_gpu=32,
-    workers_per_gpu=4,
+    samples_per_gpu=65,
+    workers_per_gpu=2,
     train=dict(
         type='RepeatDataset',
         times=2,
@@ -128,7 +132,7 @@ lr_config = dict(
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
-    interval=100,
+    interval=10,
     hooks=[
         dict(type='TextLoggerHook'),
         dict(type='TensorboardLoggerHook')
@@ -138,7 +142,7 @@ log_config = dict(
 total_epochs = 70
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = 'outputs/face-detection-0104'
+work_dir = 'outputs/face-detection-0100'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]

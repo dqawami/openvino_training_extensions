@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions
 # and limitations under the License.
 
-# pylint: disable=C0301,W0622,R0914
+# pylint: disable=C0301,W0622,R0914,R0913
 
 import argparse
 import hashlib
@@ -20,6 +20,7 @@ import json
 import os
 import subprocess
 import tempfile
+import sys
 import yaml
 
 from mmcv.utils import Config
@@ -39,7 +40,12 @@ def parse_args():
     args.add_argument('out',
                       help='A path to output file where models metrics will be saved (.yml).')
     args.add_argument('--wider_dir',
-                      help='Specify this  path if you would like to test your model on WiderFace dataset.')
+                      help='Specify this  path if you would like to test your model on WiderFace dataset.',
+                      default='data/wider_face')
+    args.add_argument('--update_config',
+                      help='Update configuration file by parameters specified here.'
+                           'Use quotes if you are going to change several params.',
+                      default='')
 
     return args.parse_args()
 
@@ -89,7 +95,19 @@ def compute_wider_metrics(config_path, snapshot, work_dir, wider_dir, outputs):
     os.makedirs(wider_data_folder, exist_ok=True)
 
     wider_data_zip = os.path.join(wider_data_folder, 'WIDER_val.zip')
-    assert os.path.exists(wider_data_zip), f'failed to find WIDER_val.zip here: {wider_data_zip}'
+    if not os.path.exists(wider_data_zip):
+        print('', file=sys.stderr)
+        print('#########################################################################', file=sys.stderr)
+        print('Cannot compute WiderFace metrics, failed to find WIDER_val.zip here:', file=sys.stderr)
+        print(f'    {os.path.abspath(wider_data_zip)}', file=sys.stderr)
+        print('Please download the data from', file=sys.stderr)
+        print('    https://drive.google.com/file/d/0B6eKvaijfFUDd3dIRmpvSk8tLUk/view', file=sys.stderr)
+        print('Save downloaded data as:', file=sys.stderr)
+        print(f'    {os.path.abspath(wider_data_zip)}', file=sys.stderr)
+        print(f'#########################################################################', file=sys.stderr)
+
+        return outputs
+
     subprocess.run(f'unzip -q -o {wider_data_zip} -d {wider_data_folder}'.split(' '), check=True)
 
     eval_tools_zip = os.path.join(wider_data_folder, 'eval_tools.zip')
@@ -126,8 +144,10 @@ def compute_wider_metrics(config_path, snapshot, work_dir, wider_dir, outputs):
     wider_face_predictions = tempfile.mkdtemp()
     subprocess.run(
         f'python {FACE_DETECTION_TOOLS}/test_out_to_wider_predictions.py'
-        f' {config_path} {res_pkl} {wider_face_predictions}'.split(' '), check=True)
-    print(wider_face_predictions)
+        f' {config_path} {res_pkl} {wider_face_predictions}'
+        f' --update_config data.test.ann_file={wider_coco_annotation} data.test.img_prefix={wider_dir}'.split(' '),
+        check=True)
+
     res_wider_metrics = os.path.join(work_dir, "wider_metrics.json")
     subprocess.run(
         f'python {FACE_DETECTION_TOOLS}/wider_face_eval.py'
@@ -140,26 +160,28 @@ def compute_wider_metrics(config_path, snapshot, work_dir, wider_dir, outputs):
     return outputs
 
 
-def coco_ap_eval(config_path, work_dir, snapshot, res_pkl, outputs):
+def coco_ap_eval(config_path, work_dir, snapshot, res_pkl, outputs, update_config):
     """ Computes COCO AP. """
 
     with open(os.path.join(work_dir, 'test_py_stdout'), 'w') as test_py_stdout:
+        update_config = f'--update_config {update_config}' if update_config else ''
         subprocess.run(
             f'python {MMDETECTION_TOOLS}/test.py'
             f' {config_path} {snapshot}'
-            f' --out {res_pkl} --eval bbox'.split(' '), stdout=test_py_stdout, check=True)
+            f' --out {res_pkl} --eval bbox {update_config}'.split(' '), stdout=test_py_stdout, check=True)
     average_precision = collect_ap(os.path.join(work_dir, 'test_py_stdout'))[0]
     outputs.append({'key': 'ap', 'value': average_precision * 100, 'unit': '%', 'display_name': 'AP @ [IoU=0.50:0.95]'})
     return outputs
 
 
-def custom_ap_eval(config_path, work_dir, res_pkl, outputs):
+def custom_ap_eval(config_path, work_dir, res_pkl, outputs, update_config):
     """ Computes AP on faces that are greater than 64x64. """
 
     res_custom_metrics = os.path.join(work_dir, "custom_metrics.json")
+    update_config = f'--update_config {update_config}' if update_config else ''
     subprocess.run(
         f'python {FACE_DETECTION_TOOLS}/wider_custom_eval.py'
-        f' {config_path} {res_pkl} --out {res_custom_metrics}'.split(' '), check=True)
+        f' {config_path} {res_pkl} --out {res_custom_metrics} {update_config}'.split(' '), check=True)
     with open(res_custom_metrics) as read_file:
         ap_64x64 = [x['average_precision'] for x in json.load(read_file) if x['object_size'][0] == 64][0]
         outputs.append({'key': 'ap_64x64', 'value': ap_64x64, 'display_name': 'AP for faces > 64x64', 'unit': '%'})
@@ -196,7 +218,7 @@ def get_file_size_and_sha256(snapshot):
     }
 
 
-def eval(config_path, snapshot, wider_dir, out):
+def eval(config_path, snapshot, wider_dir, out, update_config):
     """ Main evaluation procedure. """
 
     cfg = Config.fromfile(config_path)
@@ -210,14 +232,12 @@ def eval(config_path, snapshot, wider_dir, out):
     files = get_file_size_and_sha256(snapshot)
 
     metrics = []
-    res_pkl = os.path.join(work_dir, "res.pkl")
-    metrics = coco_ap_eval(config_path, work_dir, snapshot, res_pkl, metrics)
-    metrics = custom_ap_eval(config_path, work_dir, res_pkl, metrics)
-
-    if wider_dir:
-        metrics = compute_wider_metrics(config_path, snapshot, work_dir, wider_dir, metrics)
 
     metrics = get_complexity_and_size(cfg, config_path, work_dir, metrics)
+    res_pkl = os.path.join(work_dir, "res.pkl")
+    metrics = coco_ap_eval(config_path, work_dir, snapshot, res_pkl, metrics, update_config)
+    metrics = custom_ap_eval(config_path, work_dir, res_pkl, metrics, update_config)
+    metrics = compute_wider_metrics(config_path, snapshot, work_dir, wider_dir, metrics)
 
     for metric in metrics:
         metric['value'] = round(metric['value'], 3)
@@ -229,7 +249,7 @@ def eval(config_path, snapshot, wider_dir, out):
 
     if os.path.exists(out):
         with open(out) as read_file:
-            content = yaml.load(read_file)
+            content = yaml.load(read_file, Loader=yaml.FullLoader)
         content.update(outputs)
         outputs = content
 
@@ -241,7 +261,7 @@ def main():
     """ Main function. """
 
     args = parse_args()
-    eval(args.config, args.snapshot, args.wider_dir, args.out)
+    eval(args.config, args.snapshot, args.wider_dir, args.out, args.update_config)
 
 
 if __name__ == '__main__':

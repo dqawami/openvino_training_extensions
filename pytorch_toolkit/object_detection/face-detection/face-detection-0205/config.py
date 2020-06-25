@@ -1,67 +1,67 @@
 # model settings
-input_size = 640
+input_size = 416
 width_mult = 1.0
 model = dict(
-    type='ATSS',
+    type='FCOS',
     backbone=dict(
-        type='resnet152b',
-        out_indices=(1, 2, 3, 4),
+        type='mobilenetv2_w1',
+        out_indices=(3, 4, 5),
         frozen_stages=-1,
         norm_eval=False,
         pretrained=True,
     ),
     neck=dict(
-        type='RSSH_FPN',
-        in_channels=[int(width_mult * 256),
-                     int(width_mult * 512),
-                     int(width_mult * 1024),
-                     int(width_mult * 2048),
-                     ],
-        out_channels=256,
+        type='FPN',
+        in_channels=[int(width_mult * 32), int(width_mult * 96), int(width_mult * 320)],
+        out_channels=48,
         start_level=0,
         add_extra_convs=True,
         extra_convs_on_inputs=False,  # use P5
         num_outs=5,
         relu_before_extra_convs=True),
     bbox_head=dict(
-        type='ATSSHead',
-        num_classes=2,
-        in_channels=256,
+        type='FCOSHead',
+        num_classes=1,
+        in_channels=48,
         stacked_convs=4,
-        feat_channels=128,
-        octave_base_scale=8,
-        scales_per_octave=1,
-        anchor_ratios=[1.0],
-        anchor_strides=(4, 8, 16, 32, 64),
-        target_means=[.0, .0, .0, .0],
-        target_stds=[0.1, 0.1, 0.2, 0.2],
+        feat_channels=32,
+        strides=(8, 16, 32, 64, 128),
         loss_cls=dict(
             type='FocalLoss',
             use_sigmoid=True,
             gamma=2.0,
             alpha=0.25,
             loss_weight=1.0),
-        loss_bbox=dict(type='GIoULoss', loss_weight=2.0),
+        loss_bbox=dict(type='IoULoss', loss_weight=1.0),
         loss_centerness=dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0)))
 # training and testing settings
 cudnn_benchmark = True
 train_cfg = dict(
-    assigner=dict(type='ATSSAssigner', topk=9),
+    assigner=dict(
+        type='MaxIoUAssigner',
+        pos_iou_thr=0.4,
+        neg_iou_thr=0.4,
+        min_pos_iou=0.,
+        ignore_iof_thr=-1,
+        gt_max_assign_all=False),
+    smoothl1_beta=1.,
+    use_giou=False,
+    use_focal=False,
     allowed_border=-1,
     pos_weight=-1,
+    neg_pos_ratio=3,
     debug=False)
 test_cfg = dict(
-    nms=dict(type='nms', iou_thr=0.5),
+    nms=dict(type='nms', iou_thr=0.45),
     min_bbox_size=0,
     score_thr=0.02,
-    max_per_img=750)
+    max_per_img=200)
 # model training and testing settings
 # dataset settings
-dataset_type = 'CustomCocoDataset'
+dataset_type = 'CocoDataset'
 data_root = 'data/WIDERFace/'
-img_norm_cfg = dict(
-    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
+img_norm_cfg = dict(mean=[0, 0, 0], std=[255, 255, 255], to_rgb=True)
 train_pipeline = [
     dict(type='LoadImageFromFile', to_float32=True),
     dict(type='LoadAnnotations', with_bbox=True),
@@ -95,8 +95,8 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    imgs_per_gpu=5,
-    workers_per_gpu=3,
+    samples_per_gpu=32,
+    workers_per_gpu=4,
     train=dict(
         type='RepeatDataset',
         times=2,
@@ -104,7 +104,7 @@ data = dict(
             type=dataset_type,
             classes=('face',),
             ann_file=data_root + '/train.json',
-            min_size=0,
+            min_size=10,
             img_prefix=data_root,
             pipeline=train_pipeline
         )
@@ -125,7 +125,7 @@ data = dict(
         pipeline=test_pipeline))
 # optimizer
 optimizer = dict(type='SGD', lr=0.05, momentum=0.9, weight_decay=0.0005)
-optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
+optimizer_config = dict()
 # learning policy
 lr_config = dict(
     policy='step',
@@ -146,7 +146,7 @@ log_config = dict(
 total_epochs = 70
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = 'outputs/face-detection-0106'
+work_dir = 'outputs/face-detection-0105'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]

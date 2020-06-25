@@ -34,7 +34,13 @@ def parse_args():
     args.add_argument('out',
                       help='A path to output file where models metrics will be saved (.yml).')
     args.add_argument('--wider_dir',
-                      help='Specify this  path if you would like to test your model on WiderFace dataset.')
+                      help='Specify this  path if you would like to test your model on WiderFace dataset.',
+                      default='data/wider_dir')
+    args.add_argument(
+        '--update_config',
+        help='Update configuration file by parameters specified here.'
+             'Use quotes if you are going to change several params.',
+        default='')
 
     return args.parse_args()
 
@@ -44,19 +50,17 @@ def main():
 
     args = parse_args()
 
-    if args.wider_dir:
-        wider_val_zip = os.path.join(args.wider_dir, 'WIDER_val.zip')
-        assert os.path.exists(wider_val_zip), f'failed to find WIDER_val.zip here: {wider_val_zip}'
-
     mmdetection_tools = f'{os.path.dirname(__file__)}/../../../../external/mmdetection/tools'
 
+    update_config = f'--update_config {args.update_config}' if args.update_config else ''
     subprocess.run(f'{mmdetection_tools}/dist_train.sh'
                    f' {args.config}'
-                   f' {args.gpu_num}'.split(' '), check=True)
+                   f' {args.gpu_num}'
+                   f' {update_config}'.split(' '), check=True)
 
     cfg = Config.fromfile(args.config)
 
-    eval(args.config, os.path.join(cfg.work_dir, "latest.pth"), args.wider_dir, args.out)
+    eval(args.config, os.path.join(cfg.work_dir, "latest.pth"), args.wider_dir, args.out, args.update_config)
 
 
 if __name__ == '__main__':
