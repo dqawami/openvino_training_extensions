@@ -12,7 +12,7 @@ if [[ -e venv ]]; then
 fi
 
 # Download mmdetection
-git submodule update --init ../../external/mmdetection
+# git submodule update --init ../../external/mmdetection
 
 # Create virtual environment
 virtualenv venv -p python3.6 --prompt="(detection)"
