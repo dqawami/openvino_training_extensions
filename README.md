@@ -29,15 +29,18 @@ inference.
 
   * [Action Recognition](pytorch_toolkit/action_recognition)
   * [ASL Recognition](pytorch_toolkit/asl_recognition)
-  * [Face Recognition](pytorch_toolkit/face_recognition)
   * [Object Re-Identification](pytorch_toolkit/object_reidentification)
+    - [Face Recognition](pytorch_toolkit/object_reidentification/face_recognition)
     - [Person Re-Identification](pytorch_toolkit/object_reidentification/person_reidentification)
     - [Vehicle Re-Identification](pytorch_toolkit/object_reidentification/vehicle_reidentification)
   * [Human Pose Estimation](pytorch_toolkit/human_pose_estimation)
   * [Instance Segmentation](pytorch_toolkit/instance_segmentation)
   * [Object Detection](pytorch_toolkit/object_detection)
     - [Face Detection](pytorch_toolkit/object_detection/face-detection)
+    - [Horizontal Text Detection](pytorch_toolkit/object_detection/horizontal-text-detection/)
+    - [Person Detection](pytorch_toolkit/object_detection/person-detection/)
     - [Person Vehicle Bike Detection](pytorch_toolkit/object_detection/person-vehicle-bike-detection)
+    - [Vehicle Detection](pytorch_toolkit/object_detection/vehicle-detection)
   * [Eye State Classification](pytorch_toolkit/open_closed_eye)
   * [Segmentation of Thoracic Organs](pytorch_toolkit/segthor)
   * [Super Resolution](pytorch_toolkit/super_resolution)
@@ -54,6 +57,7 @@ inference.
   * [Text Detection](tensorflow_toolkit/text_detection)
   * [Text Recognition](tensorflow_toolkit/text_recognition)
   * [Vehicle Attributes](tensorflow_toolkit/vehicle_attributes)
+  * [Bert](tensorflow_toolkit/bert)
 
 # Tools
 
